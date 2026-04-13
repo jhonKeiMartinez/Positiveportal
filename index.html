@@ -504,10 +504,21 @@ function quickLogin(val, pin) {
         .then(r => r.json())
         .then(json => {
           if (json.store) {
-            // Merge forecast days into the store entry
             const idx = window.STORES_RAW.findIndex(s => s.code === code);
             if (idx >= 0) window.STORES_RAW[idx] = { ...window.STORES_RAW[idx], ...json.store };
             initConfig();
+          }
+          // Restore submitted order status from sheet so store sees correct state on re-login
+          if (json.submitted && json.week) {
+            Object.entries(json.submitted).forEach(([day, data]) => {
+              const key = code + ':' + json.week + ':' + day;
+              orders[key] = {
+                status:      data.status || 'submitted',
+                submittedAt: data.submittedAt || '',
+                po_number:   data.po_number || '',
+                qtys:        data.qtys || {},
+              };
+            });
           }
           hideLoadingScreen();
           bootApp();
