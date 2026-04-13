@@ -437,6 +437,22 @@ function populateLoginUI() {
 // LOGIN
 // ═══════════════════════════════════════════════════════════════
 
+function saveOrdersToSession() {
+  try { sessionStorage.setItem('pf_orders', JSON.stringify(orders)); } catch(e) {}
+}
+
+function restoreOrdersFromSession(code) {
+  try {
+    const stored = sessionStorage.getItem('pf_orders');
+    if (!stored) return;
+    const saved = JSON.parse(stored);
+    // Only restore orders for this store
+    Object.entries(saved).forEach(([key, val]) => {
+      if (key.startsWith(code + ':')) orders[key] = val;
+    });
+  } catch(e) {}
+}
+
 function doLogin() {
   const pin = (document.getElementById('lc').value || '').trim();
   if (!pin) { toast('Enter your access code','err'); return; }
@@ -508,18 +524,7 @@ function quickLogin(val, pin) {
             if (idx >= 0) window.STORES_RAW[idx] = { ...window.STORES_RAW[idx], ...json.store };
             initConfig();
           }
-          // Restore submitted order status from sheet so store sees correct state on re-login
-          if (json.submitted && json.week) {
-            Object.entries(json.submitted).forEach(([day, data]) => {
-              const key = code + ':' + json.week + ':' + day;
-              orders[key] = {
-                status:      data.status || 'submitted',
-                submittedAt: data.submittedAt || '',
-                po_number:   data.po_number || '',
-                qtys:        data.qtys || {},
-              };
-            });
-          }
+          restoreOrdersFromSession(code);
           hideLoadingScreen();
           bootApp();
         })
@@ -1415,6 +1420,7 @@ function submitOrder(code, day) {
   const submitPoExisting = orders[key]?.po_number || '';
   const submitPo = submitPoInput || submitPoExisting; // only overwrite if store entered something
   orders[key] = { qtys:{...dayQtys}, status:'submitted', notes:document.getElementById('order-notes')?.value||'', po_number:submitPo, submittedAt };
+  saveOrdersToSession();
   toast(`${day} order submitted — ${total} units ✓`,'ok');
 
   // Sync to sheet via JSONP GET (works cross-origin from Netlify)
