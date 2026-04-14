@@ -1429,7 +1429,8 @@ function submitOrder(code, day) {
     const orderWeek = nextWeekDays.includes(day) ? WEEK : WEEK - 1;
     const deliveryDayName = getDayDate(day).split(' ')[0];
     const poNumber = orders[`${code}:${WEEK}:${day}`]?.po_number || '';
-    const payload = encodeURIComponent(JSON.stringify({ action:'write_order', store:code, week:orderWeek, day, deliveryDay:deliveryDayName, qtys:dayQtys, status:'submitted', submittedAt, po_number:poNumber }));
+    const notes = orders[`${code}:${WEEK}:${day}`]?.notes || '';
+    const payload = encodeURIComponent(JSON.stringify({ action:'write_order', store:code, week:orderWeek, day, deliveryDay:deliveryDayName, qtys:dayQtys, status:'submitted', submittedAt, po_number:poNumber, notes }));
     const cbName = 'pfc_write_' + Date.now();
     const script = document.createElement('script');
     window[cbName] = function() { delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); };
