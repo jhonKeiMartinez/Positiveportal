@@ -1429,39 +1429,12 @@ function submitOrder(code, day) {
     const orderWeek = nextWeekDays.includes(day) ? WEEK : WEEK - 1;
     const deliveryDayName = getDayDate(day).split(' ')[0];
     const poNumber = orders[`${code}:${WEEK}:${day}`]?.po_number || '';
-    const orderData = { action:'write_order', store:code, week:orderWeek, day, deliveryDay:deliveryDayName, qtys:dayQtys, status:'submitted', submittedAt, po_number:poNumber };
-
-    // Check URL length — if too long, chunk qtys into multiple calls
-    const fullPayload = encodeURIComponent(JSON.stringify(orderData));
-    const BASE_URL = SHEETS_URL + '?action=write_order&callback=X&payload=';
-
-    if ((BASE_URL + fullPayload).length < 2000) {
-      // Short enough — single JSONP call
-      const cbName = 'pfc_write_' + Date.now();
-      const script = document.createElement('script');
-      window[cbName] = function() { delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); };
-      script.src = SHEETS_URL + '?action=write_order&callback=' + cbName + '&payload=' + fullPayload;
-      document.head.appendChild(script);
-    } else {
-      // Too long — split qtys into chunks and send sequentially
-      const qtyEntries = Object.entries(dayQtys).filter(([,q]) => q > 0);
-      const CHUNK = 10;
-      const chunks = [];
-      for (let i = 0; i < qtyEntries.length; i += CHUNK) chunks.push(qtyEntries.slice(i, i + CHUNK));
-      let idx = 0;
-      function sendChunk() {
-        if (idx >= chunks.length) return;
-        const batch = Object.fromEntries(chunks[idx++]);
-        const chunkData = { ...orderData, qtys: batch, _chunk: idx, _total: chunks.length };
-        const cbName = 'pfc_write_' + Date.now() + '_' + idx;
-        const script = document.createElement('script');
-        const timeout = setTimeout(() => { delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); sendChunk(); }, 15000);
-        window[cbName] = function() { clearTimeout(timeout); delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); sendChunk(); };
-        script.src = SHEETS_URL + '?action=write_order&callback=' + cbName + '&payload=' + encodeURIComponent(JSON.stringify(chunkData));
-        document.head.appendChild(script);
-      }
-      sendChunk();
-    }
+    const payload = encodeURIComponent(JSON.stringify({ action:'write_order', store:code, week:orderWeek, day, deliveryDay:deliveryDayName, qtys:dayQtys, status:'submitted', submittedAt, po_number:poNumber }));
+    const cbName = 'pfc_write_' + Date.now();
+    const script = document.createElement('script');
+    window[cbName] = function() { delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); };
+    script.src = SHEETS_URL + '?action=write_order&callback=' + cbName + '&payload=' + payload;
+    document.head.appendChild(script);
   }
   renderOrders();
 }
